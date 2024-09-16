@@ -1,0 +1,10 @@
+env/
+*.__pycache__/
+*.log
+.idea
+*.pyc
+*.sqlite3
+media/
+static/
+temp.md
+bonewa/settings/env.py
