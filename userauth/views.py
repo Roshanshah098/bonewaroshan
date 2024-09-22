@@ -70,7 +70,7 @@ class LoginView(generics.GenericAPIView):
                         "detail": "Login successful.",
                     },
                     status=status.HTTP_200_OK,
-                )
+                ) 
             return Response(
                 {"detail": "Invalid credentials or inactive account."},
                 status=status.HTTP_401_UNAUTHORIZED,

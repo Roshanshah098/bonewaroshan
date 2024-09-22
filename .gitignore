@@ -8,3 +8,4 @@ media/
 static/
 temp.md
 bonewa/settings/env.py
+env.py
