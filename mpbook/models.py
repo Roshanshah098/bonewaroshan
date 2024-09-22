@@ -2,10 +2,9 @@ from django.db import models
 from datetime import timedelta
 from django.utils import timezone
 from django.db.models import Count
+from django.contrib.auth import get_user_model
 
-from django.conf import (
-    settings,
-)  # (# For referring to the custom user model dynamically)
+User = get_user_model()
 
 
 class Genre(models.Model):
@@ -106,7 +105,7 @@ class Book(models.Model):
 class BookView(models.Model):
     book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name="views")
     viewer = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
+        User,
         on_delete=models.CASCADE,
         related_name="book_views",
         null=True,
@@ -116,9 +115,7 @@ class BookView(models.Model):
 
 
 class PreviousSearch(models.Model):
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, verbose_name="User"
-    )
+    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="User")
     query = models.CharField(
         max_length=255, null=False, blank=False, verbose_name="Search Query"
     )
