@@ -1,10 +1,12 @@
 from django.contrib import admin
-from .models import Genre, Book, PreviousSearch, BookView
+from .models import Genre, Book, PreviousSearch
+
 
 @admin.register(Genre)
 class GenreAdmin(admin.ModelAdmin):
     list_display = ("name", "id")
     search_fields = ("name",)
+
 
 @admin.register(Book)
 class BookAdmin(admin.ModelAdmin):
@@ -15,7 +17,7 @@ class BookAdmin(admin.ModelAdmin):
         "categories",
         "published_date",
         "rating",
-        "is_trending_display",  
+        "is_trending_display",
     )
     search_fields = ("title", "author", "genre", "categories")
     list_filter = (
@@ -24,13 +26,14 @@ class BookAdmin(admin.ModelAdmin):
         "published_date",
         "rating",
     )
-    ordering = ("-published_date", "-rating")  
-    
+    ordering = ("-published_date", "-rating")
+
     def is_trending_display(self, obj):
         return obj.is_trending
 
     is_trending_display.short_description = "Trending"
-    is_trending_display.boolean = True  # Show True/False as icons
+    is_trending_display.boolean = True
+
 
 @admin.register(PreviousSearch)
 class PreviousSearchAdmin(admin.ModelAdmin):
@@ -42,14 +45,3 @@ class PreviousSearchAdmin(admin.ModelAdmin):
     )
     list_filter = ("searched_at",)
     ordering = ("-searched_at",)
-
-@admin.register(BookView)
-class BookViewAdmin(admin.ModelAdmin):
-    list_display = ("book", "viewer", "view_date")
-    search_fields = (
-        "book__title",
-        "viewer__username",
-        "viewer__email", 
-    )
-    list_filter = ("view_date",)
-    ordering = ("-view_date",)
