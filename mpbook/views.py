@@ -1,18 +1,16 @@
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
-from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.filters import SearchFilter
-from django.db.models import Q, Count
+from django_filters.rest_framework import DjangoFilterBackend
+from django.db.models import Q
+from django.utils import timezone
 from .models import Genre, Book, PreviousSearch
 from .serializers import GenreSerializer, BookSerializer, PreviousSearchSerializer
-from rest_framework_simplejwt.authentication import JWTAuthentication
-from django.utils import timezone
-from datetime import timedelta
 from .filters import GenreFilter, BookFilter
 from .paginations import CustomPagination
-from django.core.exceptions import ValidationError
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
 
 class GenreViewSet(viewsets.ModelViewSet):
@@ -45,7 +43,7 @@ class GenreViewSet(viewsets.ModelViewSet):
 
 
 class BookViewSet(viewsets.ModelViewSet):
-    queryset = Book.objects.all()
+    queryset = Book.objects.order_by("-id")
     serializer_class = BookSerializer
     permission_classes = [IsAuthenticated]
     authentication_classes = [JWTAuthentication]
@@ -54,13 +52,43 @@ class BookViewSet(viewsets.ModelViewSet):
     search_fields = ["title", "author", "genre"]
     pagination_class = CustomPagination
 
+    def get_serializer_class(self):
+        if self.action == "trending_books":
+            return BookSerializer
+        if self.action == "recent_searches":
+            return PreviousSearchSerializer
+        if self.action == "previous_search_books":
+            return BookSerializer
+        return super().get_serializer_class()
+
+    def get_permissions(self):
+        if self.action in ["rate_book", "clear_search_history"]:
+            self.permission_classes = [AllowAny]
+        return [permission() for permission in self.permission_classes]
+
+    def get_queryset(self):
+        if self.action == "previous_search_books":
+            previous_searches = PreviousSearch.objects.filter(user=self.request.user)
+            queries = previous_searches.values_list("query", flat=True)
+            book_filter = Q()
+            for query in queries:
+                search_terms = query.split(",")
+                for term in search_terms:
+                    term = term.strip()
+                    book_filter |= (
+                        Q(title__icontains=term)
+                        | Q(author__icontains=term)
+                        | Q(genre__exact=term)
+                    )
+            return Book.objects.filter(book_filter).distinct().order_by("title")[:10]
+        return super().get_queryset()
+
     def list(self, request, *args, **kwargs):
         search_query = request.GET.get("search", "")
         if search_query:
             PreviousSearch.objects.create(
                 user=request.user, query=search_query, searched_at=timezone.now()
             )
-
         return super().list(request, *args, **kwargs)
 
     @action(detail=False, methods=["get"], url_path="trending-books")
@@ -70,7 +98,6 @@ class BookViewSet(viewsets.ModelViewSet):
         if page is not None:
             serializer = self.get_serializer(page, many=True)
             return self.get_paginated_response(serializer.data)
-
         serializer = self.get_serializer(trending_books, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -84,38 +111,17 @@ class BookViewSet(viewsets.ModelViewSet):
                 {"detail": "No recent searches found."},
                 status=status.HTTP_404_NOT_FOUND,
             )
-        serializer = PreviousSearchSerializer(recent_searches, many=True)
+        serializer = self.get_serializer(recent_searches, many=True)
         return Response({"recent_searches": serializer.data}, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=["get"], url_path="previous-search-books")
     def previous_search_books(self, request):
-        previous_searches = PreviousSearch.objects.filter(user=request.user)
-
-        if not previous_searches.exists():
-            return Response(
-                {"detail": "No previous searches found."},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-        queries = previous_searches.values_list("query", flat=True)
-        book_filter = Q()
-        for query in queries:
-            search_terms = query.split(",")
-            for term in search_terms:
-                term = term.strip()
-                book_filter |= (
-                    Q(title__icontains=term)
-                    | Q(author__icontains=term)
-                    | Q(genre__exact=term)
-                    | Q(categories__exact=term)
-                )
-        books = Book.objects.filter(book_filter).distinct().order_by("title")[:10]
-
+        books = self.get_queryset()
         if not books.exists():
             return Response(
                 {"detail": "No books found based on previous searches."},
                 status=status.HTTP_404_NOT_FOUND,
             )
-
         serializer = self.get_serializer(books, many=True)
         return Response({"books": serializer.data}, status=status.HTTP_200_OK)
 
@@ -139,8 +145,7 @@ class BookViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["delete"], url_path="clear-history")
     def clear_search_history(self, request):
-        previous_searches = PreviousSearch.objects.filter(user=request.user)
-        previous_searches.delete()
+        PreviousSearch.objects.filter(user=request.user).delete()
         return Response(
             {"detail": "Search history cleared."}, status=status.HTTP_204_NO_CONTENT
         )
