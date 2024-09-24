@@ -77,7 +77,7 @@ class BookViewSet(viewsets.ModelViewSet):
                     term = term.strip()
                     book_filter |= (
                         Q(title__icontains=term)
-                        | Q(author__icontains=term)
+                        | Q(categories__exact=term)
                         | Q(genre__exact=term)
                     )
             return Book.objects.filter(book_filter).distinct().order_by("title")[:10]
