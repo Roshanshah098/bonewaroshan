@@ -1,7 +1,7 @@
 from django.db import models
 from datetime import timedelta
 from django.utils import timezone
-from django.db.models import Count, Avg
+from django.db.models import Count, Avg, Q, OuterRef, Subquery
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
@@ -65,7 +65,7 @@ class Book(models.Model):
     @property
     def is_trending(self):
         trending_rating_threshold = 4.0
-        recent_time_threshold = timezone.now() - timedelta(days=180)  # 6 months
+        recent_time_threshold = timezone.now() - timedelta(days=180)
         popular_search_count = PreviousSearch.objects.filter(
             query__icontains=self.title
         ).count()
@@ -74,18 +74,33 @@ class Book(models.Model):
             or popular_search_count >= 100
         )
 
-    # Annotate based on search count and filter by rating
     @classmethod
-    def get_popular_books(cls):
+    def get_trending_books(cls):
+        recent_time_threshold = timezone.now() - timedelta(days=180)
+        search_count_subquery = (
+            PreviousSearch.objects.filter(query__icontains=OuterRef("title"))
+            .values("query")
+            .annotate(count=Count("id"))
+            .values("count")
+        )
+
         return (
-            cls.objects.annotate(search_count=Count("previoussearch__query"))
-            .filter(rating__gte=4.0)
+            cls.objects.annotate(search_count=Subquery(search_count_subquery))
+            .filter(
+                Q(rating__gte=4.0)
+                & (
+                    Q(published_date__gte=recent_time_threshold)
+                    | Q(search_count__gte=100)
+                )
+            )
             .order_by("-rating", "-search_count")
         )
 
 
 class PreviousSearch(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="previous_searches"
+    )
     query = models.CharField(max_length=255, null=False, blank=False)
     searched_at = models.DateTimeField(auto_now_add=True)
 
