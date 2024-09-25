@@ -2,8 +2,6 @@ import django_filters
 from django.db.models import Q
 from .models import Book, Genre
 
-
-# from django.core.exceptions import ValidationError
 class GenreFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(field_name="name", lookup_expr="icontains")
 

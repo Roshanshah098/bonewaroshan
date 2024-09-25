@@ -1,5 +1,14 @@
 from rest_framework import serializers
-from .models import Genre, Book, PreviousSearch
+from .models import (
+    Genre,
+    Book,
+    PreviousSearch,
+)
+
+# from django.contrib.contenttypes.models import ContentType
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 
 class GenreSerializer(serializers.ModelSerializer):
