@@ -3,8 +3,6 @@ from datetime import timedelta
 from django.utils import timezone
 from django.db.models import Count, Q, OuterRef, Subquery
 from django.contrib.auth import get_user_model
-from django.contrib.contenttypes.models import ContentType
-from django.contrib.contenttypes.fields import GenericForeignKey
 
 User = get_user_model()
 

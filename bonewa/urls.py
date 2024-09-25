@@ -5,4 +5,5 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("", include("userauth.urls")),
     path("", include("mpbook.urls")),
+    path("", include("content.urls")),
 ]

@@ -1,7 +1,5 @@
 from django.db import models
 from django.utils import timezone
-
-# from django.db.models import Count, Q, OuterRef, Subquery
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericForeignKey
@@ -9,7 +7,7 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 User = get_user_model()
 
 
-# Base content creation using abstarct
+# Base content creation using abstract
 class AbstractContent(models.Model):
     title = models.CharField(max_length=100)
     body = models.TextField(blank=True, null=True)
